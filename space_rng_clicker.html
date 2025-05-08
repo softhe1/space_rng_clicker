@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Space RNG Clicker</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: black;
+      color: white;
+      text-align: center;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: url('https://images.unsplash.com/photo-1477201389074-1863f668fac7?auto=format&fit=crop&w=1950&q=80') no-repeat center center;
+      background-size: cover;
+      opacity: 0.2;
+      z-index: -1;
+    }
+    h1 {
+      margin-top: 20px;
+      font-size: 2.5em;
+      text-shadow: 0 0 10px #fff5;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 15px;
+      font-size: 1em;
+      background: #111;
+      color: white;
+      border: 1px solid #444;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #222;
+    }
+    .section {
+      margin: 15px auto;
+      padding: 10px;
+      max-width: 800px;
+      background: rgba(0,0,0,0.5);
+      border-radius: 10px;
+    }
+    .item {
+      border: 1px solid #444;
+      margin: 5px;
+      padding: 8px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.05);
+    }
+    .common { color: #aaa; }
+    .uncommon { color: #4caf50; }
+    .rare { color: #2196f3; }
+    .epic { color: #b26ae6; }
+    .legendary { color: #f44336; font-weight: bold; text-shadow: 0 0 5px #f44336aa; }
+    .hidden { display: none; }
+    .tab-buttons { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+  <h1>🌌 Space RNG Clicker 🌠</h1>
+  <p><strong>Wallet:</strong> <span id="wallet">0</span> coins</p>
+
+  <div class="tab-buttons">
+    <button onclick="roll()">🎲 Roll</button>
+    <button onclick="toggleShop()">🛒 Shop</button>
+    <button onclick="toggleInventory()">🎒 Inventory</button>
+  </div>
+
+  <div class="section" id="resultArea">
+    <h2 id="result">Roll to see what you get!</h2>
+    <p id="rarityText"></p>
+  </div>
+
+  <!-- Inventory Section -->
+  <div class="section hidden" id="inventory">
+    <h2>Inventory</h2>
+    <div id="inventoryItems"></div>
+    <p><button onclick="sellAll()">Sell All Non-Favorites</button></p>
+  </div>
+
+  <!-- Shop Section -->
+  <div class="section hidden" id="shop">
+    <h2>Shop - Luck Boosters</h2>
+    <div id="shopItems"></div>
+  </div>
+
+  <script>
+    let wallet = 0;
+    let luckMultiplier = 1;
+    let inventory = [];
+
+    const outcomes = [
+      { text: "🪙 10 Coins", weight: 50, rarity: "common", value: 10, coinsOnly: true },
+      { text: "🍞 Stale Bread", weight: 40, rarity: "common", value: 5 },
+      { text: "🧹 Dusty Stick", weight: 30, rarity: "common", value: 8 },
+      { text: "💰 100 Coins!", weight: 20, rarity: "uncommon", value: 100, coinsOnly: true },
+      { text: "🍀 Lucky Clover!", weight: 15, rarity: "uncommon", value: 20 },
+      { text: "📦 Mystery Box", weight: 12, rarity: "uncommon", value: 25 },
+      { text: "🪓 Wooden Axe", weight: 10, rarity: "uncommon", value: 30 },
+      { text: "💎 Rare Gem!", weight: 6, rarity: "rare", value: 45 },
+      { text: "🧊 Ice Crystal", weight: 5, rarity: "rare", value: 50 },
+      { text: "🧪 Speed Potion", weight: 4, rarity: "rare", value: 55 },
+      { text: "🔥 Epic Fireball!", weight: 2, rarity: "epic", value: 100 },
+      { text: "⚡ Thunder Rune", weight: 1.5, rarity: "epic", value: 120 },
+      { text: "👑 King's Crown (Legendary!)", weight: 0.5, rarity: "legendary", value: 300 },
+      { text: "🕳️ Void Relic (Ultra Rare!)", weight: 0.2, rarity: "legendary", value: 500 }
+    ];
+
+    const shopItems = [
+      { name: "Bronze Gauntlet", cost: 1000, multiplier: 2 },
+      { name: "Silver Gauntlet", cost: 5000, multiplier: 4 },
+      { name: "Gold Gauntlet", cost: 10000, multiplier: 6 },
+      { name: "Plasma Gloves", cost: 20000, multiplier: 12 },
+      { name: "Nebula Fists", cost: 50000, multiplier: 20 },
+      { name: "Singularity Grip", cost: 100000, multiplier: 50 }
+    ];
+
+    function updateWallet() {
+      document.getElementById("wallet").innerText = wallet;
+    }
+
+    function roll() {
+      let totalWeight = outcomes.reduce((sum, item) => sum + item.weight * luckMultiplier, 0);
+      let rand = Math.random() * totalWeight;
+
+      for (const item of outcomes) {
+        rand -= item.weight * luckMultiplier;
+        if (rand <= 0) {
+          showResult(item);
+          if (item.coinsOnly) {
+            wallet += item.value;
+            updateWallet();
+          } else {
+            inventory.push({ ...item, favorite: false });
+            updateInventory();
+          }
+          break;
+        }
+      }
+    }
+
+    function showResult(item) {
+      document.getElementById("result").innerText = `You got: ${item.text}`;
+      document.getElementById("rarityText").innerHTML = `Rarity: <span class="${item.rarity}">${item.rarity.toUpperCase()}</span>`;
+    }
+
+    function toggleShop() {
+      document.getElementById("shop").classList.toggle("hidden");
+      document.getElementById("inventory").classList.add("hidden");
+      renderShop();
+    }
+
+    function toggleInventory() {
+      document.getElementById("inventory").classList.toggle("hidden");
+      document.getElementById("shop").classList.add("hidden");
+      updateInventory();
+    }
+
+    function renderShop() {
+      const container = document.getElementById("shopItems");
+      container.innerHTML = "";
+      shopItems.forEach((item, index) => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `
+          <strong>${item.name}</strong><br>
+          Cost: ${item.cost} coins<br>
+          Luck Multiplier: x${item.multiplier}<br>
+          <button onclick="buyItem(${index})">Buy</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function buyItem(index) {
+      const item = shopItems[index];
+      if (wallet >= item.cost) {
+        wallet -= item.cost;
+        luckMultiplier += item.multiplier;
+        updateWallet();
+        alert(`Bought ${item.name}! Luck multiplier is now x${luckMultiplier}`);
+      } else {
+        alert("Not enough coins.");
+      }
+    }
+
+    function updateInventory() {
+      const container = document.getElementById("inventoryItems");
+      container.innerHTML = "";
+      if (inventory.length === 0) {
+        container.innerHTML = "<p>Your inventory is empty.</p>";
+        return;
+      }
+      inventory.forEach((item, i) => {
+        const div = document.createElement("div");
+        div.className = `item ${item.rarity}`;
+        div.innerHTML = `
+          ${item.text} - ${item.rarity.toUpperCase()}<br>
+          Value: ${item.value} coins<br>
+          <button onclick="toggleFavorite(${i})">${item.favorite ? "★ Unfavorite" : "☆ Favorite"}</button>
+          <button onclick="sellItem(${i})" ${item.favorite ? "disabled" : ""}>Sell</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function toggleFavorite(index) {
+      inventory[index].favorite = !inventory[index].favorite;
+      updateInventory();
+    }
+
+    function sellItem(index) {
+      if (!inventory[index].favorite) {
+        wallet += inventory[index].value;
+        inventory.splice(index, 1);
+        updateWallet();
+        updateInventory();
+      }
+    }
+
+    function sellAll() {
+      inventory = inventory.filter(item => {
+        if (!item.favorite) {
+          wallet += item.value;
+          return false;
+        }
+        return true;
+      });
+      updateWallet();
+      updateInventory();
+    }
+
+    updateWallet();
+  </script>
+
+</body>
+</html>
